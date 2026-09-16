@@ -34,7 +34,11 @@ public class PlayerMovement : MonoBehaviour
         isGrounded = groundCheck != null &&
             Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
 
-        rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
+        if (Mathf.Abs(moveInput) > 0.01f)
+        {
+            rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
+        }
+        // else: leave X velocity alone so surface friction (e.g. ice) controls deceleration
 
         if (jumpRequested)
         {
