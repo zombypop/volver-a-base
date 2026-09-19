@@ -1,0 +1,11 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="VisualElement" style="flex-grow: 1; flex-direction: row; height: 10%; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;);">
+        <ui:VisualElement style="flex-grow: 1; flex-direction: row; font-size: 80px; color: rgb(255, 225, 0); justify-content: space-between;">
+            <ui:Label text="100" parse-escape-sequences="false" name="Health"/>
+            <ui:Label name="altitude-label" text="8,848.86 meters" style="font-size: 80px; -unity-text-align: upper-right; -unity-font-style: normal; color: rgb(220, 255, 0);"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="GameOverScreen" enabled="false" style="flex-grow: 1; height: 90%; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;); font-size: 140px; color: rgb(255, 208, 0); align-items: center; justify-content: center;">
+        <ui:Label text="GAME OVER" name="GameOverText"/>
+    </ui:VisualElement>
+</ui:UXML>
