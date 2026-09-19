@@ -9,6 +9,8 @@ public class PlayerHealth : MonoBehaviour
     public float CurrentHealth { get; private set; }
     public bool IsDead => CurrentHealth <= 0f;
 
+    public event System.Action Died;
+
     private float invulnerableUntil = -1f;
 
     void Awake()
@@ -33,7 +35,8 @@ public class PlayerHealth : MonoBehaviour
 
     private void Die()
     {
-        // Hook up respawn / game-over behaviour here.
         Debug.Log($"{name} died.");
+        Died?.Invoke();
+        gameObject.SetActive(false);
     }
 }
