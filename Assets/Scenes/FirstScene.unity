@@ -450,7 +450,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WindZone
   mountain: {fileID: 2108195285}
-  windStrength: 7500
+  windStrength: 100
   gustFrequency: 0.5
   ropeLengthWindFactor: 0.4
 --- !u!61 &274325739
@@ -1188,7 +1188,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WindZone
   mountain: {fileID: 2108195285}
-  windStrength: 7500
+  windStrength: 100
   gustFrequency: 0.5
   ropeLengthWindFactor: 0.4
 --- !u!1 &1302028665
