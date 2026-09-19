@@ -17,8 +17,11 @@ public class PlayerMovement : MonoBehaviour
     [Header("Rope descent")]
     [SerializeField] private float descendSpeed = 1.5f;    // safe rappel speed downward (units/sec)
     [SerializeField] private float maxRopeLength = 5f;      // how far below the anchor the rope reaches
-    [SerializeField] private float ropeCenterSpeed = 4f;    // how fast the player is pulled under the anchor
+    [SerializeField] private float ropeCenterSpeed = 4f;    // max speed the rope can pull the player back toward center
+    [SerializeField] private float ropeSwingResponsiveness = 3f; // how hard the rope resists sideways sway (higher = stiffer, less swing)
     [SerializeField] private LineRenderer ropeRenderer;     // visual rope; auto-created if left empty
+    [SerializeField] private float ropeDamagePerMeter = 2f; // extra mountain-impact damage per meter of rope paid out
+    [SerializeField] private float minSwingSpeedForBonus = 1.5f; // sideways speed needed for a hit to count as a "swinging" hit
 
     private Rigidbody2D rb;
     private Collider2D bodyCollider;
@@ -31,12 +34,19 @@ public class PlayerMovement : MonoBehaviour
     private float lastClickTime = -1f;
     private EdgeAnchor nearbyAnchor;   // an edge we're overlapping and could grab
     private EdgeAnchor ropedAnchor;    // the edge we're currently descending from (null = not on rope)
+    private PlayerHealth health;
+
+    // How far below the anchor we've paid out rope right now (0 when not roped).
+    // Used by WindZone to scale gust force and here to scale mountain-impact damage.
+    public float CurrentRopeLength => ropedAnchor != null ? Mathf.Max(0f, ropedAnchor.RopeOrigin.y - rb.position.y) : 0f;
+    public bool IsOnRope => ropedAnchor != null;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         bodyCollider = GetComponent<Collider2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+        health = GetComponent<PlayerHealth>();
 
         // Make sure we have a rope to draw. If none was assigned in the Inspector,
         // spin up a simple one so the mechanic works out of the box.
@@ -155,8 +165,11 @@ public class PlayerMovement : MonoBehaviour
         Vector2 origin = ropedAnchor.RopeOrigin;
         Vector2 pos = rb.position;
 
-        // Pull the player under the anchor so they hang from it rather than off to the side.
-        float xVel = Mathf.Clamp((origin.x - pos.x) / Time.fixedDeltaTime, -ropeCenterSpeed, ropeCenterSpeed);
+        // Pull the player back toward hanging under the anchor, but as a spring rather than
+        // an instant snap — this is what lets wind gusts actually swing the player sideways
+        // instead of being corrected away within a single physics step.
+        float offsetX = pos.x - origin.x;
+        float xVel = Mathf.Clamp(-offsetX * ropeSwingResponsiveness, -ropeCenterSpeed, ropeCenterSpeed);
 
         // Descend, but stop paying out rope once we reach its full length.
         float depth = origin.y - pos.y;        // how far below the anchor we already are
@@ -175,6 +188,30 @@ public class PlayerMovement : MonoBehaviour
             ropeRenderer.SetPosition(0, ropedAnchor.RopeOrigin);
             ropeRenderer.SetPosition(1, rb.position);
         }
+    }
+
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        MountainHazard hazard = collision.collider.GetComponent<MountainHazard>();
+        if (hazard == null || health == null) return;
+
+        // A light graze shouldn't hurt — only a proper slam into the wall counts.
+        float impactSpeed = collision.relativeVelocity.magnitude;
+        if (impactSpeed < hazard.MinImpactSpeed) return;
+
+        float overSpeed = impactSpeed - hazard.MinImpactSpeed;
+        float damage = hazard.BaseDamage + overSpeed * hazard.ImpactSpeedDamageMultiplier;
+
+        // Extra damage only for an actual swinging hit: on the rope AND moving sideways
+        // at impact — not just for hanging on a long rope that happens to bump the wall.
+        float lateralSpeed = Mathf.Abs(collision.relativeVelocity.x);
+        bool isSwingingHit = IsOnRope && lateralSpeed >= minSwingSpeedForBonus;
+        if (isSwingingHit)
+        {
+            damage += CurrentRopeLength * ropeDamagePerMeter;
+        }
+
+        health.TakeDamage(damage);
     }
 
     void OnTriggerEnter2D(Collider2D other)
