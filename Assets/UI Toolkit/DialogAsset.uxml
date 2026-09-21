@@ -1,0 +1,7 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement style="flex-grow: 1;">
+        <ui:VisualElement name="VisualElement" style="flex-grow: 1; width: 50%; height: 40%; justify-content: center; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;); color: rgb(255, 215, 0); font-size: 80px; align-self: center; -unity-text-align: middle-center;">
+            <ui:Label text="You are on the top on the mountain, but now what??" style="white-space: normal;"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
