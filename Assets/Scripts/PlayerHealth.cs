@@ -33,6 +33,15 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
+    // Ignores invulnerability and remaining health — for unsurvivable events like a killing fall.
+    public void Kill()
+    {
+        if (IsDead) return;
+
+        CurrentHealth = 0f;
+        Die();
+    }
+
     private void Die()
     {
         Debug.Log($"{name} died.");

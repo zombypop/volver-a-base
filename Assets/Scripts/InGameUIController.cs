@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 [RequireComponent(typeof(UIDocument))]
@@ -15,6 +18,8 @@ public class InGameUIController : MonoBehaviour
     private Label altitudeLabel;
     private Label healthLabel;
     private VisualElement gameOverScreen;
+    private List<VisualElement> ropeIcons = new List<VisualElement>();
+    private PlayerMovement movement;
     private PlayerHealth health;
     private float startY;
     private float lastShownAltitude = float.NaN;
@@ -27,16 +32,49 @@ public class InGameUIController : MonoBehaviour
         altitudeLabel = root.Q<Label>("altitude-label");
         healthLabel = root.Q<Label>("Health");
         gameOverScreen = root.Q<VisualElement>("GameOverScreen");
+
+        // The rope icons are the images inside the "rope-icons" container; we hide them
+        // from the right as ropes are spent.
+        VisualElement ropeContainer = root.Q<VisualElement>("rope-icons");
+        ropeIcons = ropeContainer != null ? ropeContainer.Children().ToList()
+                                          : new List<VisualElement>();
+
+        // Restart button reloads the current scene from scratch.
+        Button restartButton = root.Q<Button>("RestartButton");
+        if (restartButton != null) restartButton.clicked += RestartScene;
+
         lastShownAltitude = float.NaN;
         lastShownHealth = -1;
 
         // Hidden until the player dies (also re-applied if the UI gets rebuilt mid-game).
         SetGameOverVisible(health != null && health.IsDead);
+
+        // Re-sync the icons to the live count in case the UI tree was rebuilt mid-game.
+        if (movement != null) UpdateRopeIcons(movement.RopesRemaining);
     }
 
     void OnDestroy()
     {
         if (health != null) health.Died -= OnPlayerDied;
+        if (movement != null) movement.RopesChanged -= UpdateRopeIcons;
+    }
+
+    // Show one icon per rope still in the pack; spent ropes disappear from the right.
+    private void UpdateRopeIcons(int remaining)
+    {
+        for (int i = 0; i < ropeIcons.Count; i++)
+        {
+            bool show = i < remaining;
+            ropeIcons[i].style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+    }
+
+    private void RestartScene()
+    {
+        // Time may have been paused on the Game Over screen; make sure it's running again.
+        Time.timeScale = 1f;
+        Scene current = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(current.buildIndex);
     }
 
     private void SetGameOverVisible(bool visible)
@@ -57,17 +95,20 @@ public class InGameUIController : MonoBehaviour
 
     void Start()
     {
-        if (player == null)
-        {
-            PlayerMovement movement = FindFirstObjectByType<PlayerMovement>();
-            if (movement != null) player = movement.transform;
-        }
+        if (movement == null) movement = FindFirstObjectByType<PlayerMovement>();
+        if (player == null && movement != null) player = movement.transform;
 
         if (player != null)
         {
             // The player starts at the summit, so that's where the full altitude is shown.
             startY = player.position.y;
             health = player.GetComponent<PlayerHealth>();
+        }
+
+        if (movement != null)
+        {
+            movement.RopesChanged += UpdateRopeIcons;
+            UpdateRopeIcons(movement.RopesRemaining);
         }
 
         if (followCamera == null) followCamera = FindFirstObjectByType<CinemachineCamera>();

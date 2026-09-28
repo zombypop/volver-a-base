@@ -1,11 +1,28 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <ui:VisualElement name="VisualElement" style="flex-grow: 1; flex-direction: row; height: 10%; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;);">
-        <ui:VisualElement style="flex-grow: 1; flex-direction: row; font-size: 48px; color: rgb(255, 230, 198); justify-content: space-between;">
-            <ui:Label text="100" parse-escape-sequences="false" name="Health"/>
-            <ui:Label name="altitude-label" text="8,848.86 meters"/>
+    <ui:VisualElement name="top-container" style="position: absolute; top: 0; left: 0; right: 0; flex-grow: 0; flex-shrink: 0; flex-direction: row; height: 10%; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;);">
+        <ui:VisualElement name="main-container" style="flex-grow: 1; flex-direction: row; font-size: 48px; color: rgb(255, 230, 198); justify-content: flex-start; -unity-text-align: middle-left;">
+            <ui:VisualElement name="health-container" style="flex-grow: 0; flex-shrink: 0; width: 20%; justify-content: center;">
+                <ui:Label text="100" parse-escape-sequences="false" name="Health" style="font-size: 32px;"/>
+            </ui:VisualElement>
+            <ui:VisualElement name="rope-icons" style="flex-grow: 0; flex-shrink: 0; width: 25%; flex-direction: row; overflow: hidden;">
+                <ui:Image source="project://database/Assets/Images/rope.png?fileID=2800000&amp;guid=232cba233699f7c41b1814b21a37e2c8&amp;type=3#rope"/>
+                <ui:Image source="project://database/Assets/Images/rope.png?fileID=2800000&amp;guid=232cba233699f7c41b1814b21a37e2c8&amp;type=3#rope"/>
+                <ui:Image source="project://database/Assets/Images/rope.png?fileID=2800000&amp;guid=232cba233699f7c41b1814b21a37e2c8&amp;type=3#rope"/>
+            </ui:VisualElement>
+            <ui:VisualElement name="ice-axe-icons" style="flex-grow: 0; flex-shrink: 0; width: 25%; flex-direction: row; overflow: hidden;">
+                <ui:Image source="project://database/Assets/Images/ice-axe.png?fileID=2800000&amp;guid=ddbff5f143d450a47921429dd1285901&amp;type=3#ice-axe"/>
+                <ui:Image source="project://database/Assets/Images/ice-axe.png?fileID=2800000&amp;guid=ddbff5f143d450a47921429dd1285901&amp;type=3#ice-axe"/>
+                <ui:Image source="project://database/Assets/Images/ice-axe.png?fileID=2800000&amp;guid=ddbff5f143d450a47921429dd1285901&amp;type=3#ice-axe"/>
+            </ui:VisualElement>
+            <ui:VisualElement name="altitude-container" style="flex-grow: 0; flex-shrink: 0; width: 30%; flex-direction: row; justify-content: flex-end;">
+                <ui:Label name="altitude-label" text="8,848.86 meters" style="font-size: 32px;"/>
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
     <ui:VisualElement name="GameOverScreen" enabled="false" style="flex-grow: 1; height: 90%; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;); font-size: 140px; color: rgb(255, 230, 198); align-items: center; justify-content: center;">
         <ui:Label text="GAME OVER" name="GameOverText"/>
+    </ui:VisualElement>
+    <ui:VisualElement name="VisualElement" style="flex-grow: 0; flex-direction: row; justify-content: flex-end; flex-shrink: 0; height: 10%;">
+        <ui:Button text="Restart" name="RestartButton" style="-unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;);"/>
     </ui:VisualElement>
 </ui:UXML>

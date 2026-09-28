@@ -6,21 +6,21 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private bool icyTerrain = true;          // off = normal footing: releasing the keys stops you instead of sliding
     [SerializeField] private float acceleration = 20f;
     [SerializeField] private float maxMoveSpeed = 2.5f;
+    [SerializeField] private float maxClimbAngle = 60f;        // slopes steeper than this can't be climbed — pushing uphill just slides you down
 
     [Header("Snow trudge")]
     [SerializeField] private float startupTime = 0.5f;         // seconds of effort to work up from a trudge to full walking speed
     [SerializeField] private float startupSpeedFactor = 0.3f;  // fraction of maxMoveSpeed you manage the instant you start (post-hole into the snow)
-    [SerializeField] private float jumpForce = 4f;
     [SerializeField] private float gripDeceleration = 40f;
-    [SerializeField] private float climbHopHeight = 0.5f;      // how high the little climb hop reaches (meters)
-    [SerializeField] private float climbHopSideSpeed = 1.5f;   // sideways push into the climb (units/sec)
-    [SerializeField] private float doubleClickTime = 0.3f;     // max gap between clicks to count as a double
     [SerializeField] private Transform groundCheck;
     [SerializeField] private float groundCheckRadius = 0.1f;
     [SerializeField] private LayerMask groundLayer;
 
     [Header("Ground angle probe")]
     [SerializeField] private float groundRayLength = 0.6f;   // how far down to look for the surface under the player
+
+    [Header("Fatal fall")]
+    [SerializeField] private float fatalFallHeight = 10f;    // an uninterrupted free fall taller than this kills on landing
 
     [Header("Rope descent")]
     [SerializeField] private float descendSpeed = 1.5f;    // safe rappel speed downward (units/sec)
@@ -32,9 +32,18 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float ropeWidth = 0.05f;       // thickness of the rope line; tweakable live in Play mode
     [SerializeField] private float ropeDamagePerMeter = 2f; // extra mountain-impact damage per meter of rope paid out
     [SerializeField] private float minSwingSpeedForBonus = 1.5f; // sideways speed needed for a hit to count as a "swinging" hit
+    [SerializeField] private int startingRopes = 3;         // ropes carried at the start; each rappel grab spends one
+
+    [Header("Ice-axe arrest")]
+    [SerializeField] private float axeMinSlopeAngle = 45f;       // shallowest slope (deg) the axe will bite into
+    [SerializeField] private float axeMaxSlopeAngle = 80f;       // steepest slope (deg) the axe still works on (near-vertical is too sheer)
+    [SerializeField] private float axeArrestDeceleration = 30f;  // how hard planting the axe scrubs the slide off
+    [SerializeField] private float axeResidualSpeed = 0.15f;     // slide left in the axe (units/sec) — an "almost" stop, not a dead one
+    [SerializeField] private bool axeSpriteFlipX = true;         // flip the axe-grab sprite so the axe bites into the slope
 
     [Header("Animation")]
     [SerializeField] private float walkAnimSpeedThreshold = 0.05f; // horizontal speed above which the walk anim plays
+    [SerializeField] private bool ropeSpriteFlipX = true;      // flip the rope-descent sprite so the feet face the rock wall
 
     private Rigidbody2D rb;
     private Collider2D bodyCollider;
@@ -42,16 +51,19 @@ public class PlayerMovement : MonoBehaviour
     private Animator animator;
     private static readonly int IsWalkingHash = Animator.StringToHash("IsWalking");
     private static readonly int IsSlidingHash = Animator.StringToHash("IsSliding");
+    private static readonly int IsOnRopeHash = Animator.StringToHash("IsOnRope");
+    private static readonly int IsUsingAxeHash = Animator.StringToHash("IsUsingAxe");
     private float moveInput;
-    private bool jumpRequested;
     private bool isGrounded;
     private bool isGripping;
-    private bool climbHopRequested;
+    private bool isUsingAxe;            // planting the ice axe into a steep slope this physics step
     private float moveHoldTime;        // how long we've been trudging in the current direction (drives the snow ramp)
     private float lastMoveSign;        // direction we were last steering; a flip restarts the trudge
-    private float lastClickTime = -1f;
     private EdgeAnchor nearbyAnchor;   // an edge we're overlapping and could grab
     private EdgeAnchor ropedAnchor;    // the edge we're currently descending from (null = not on rope)
+    private int ropesRemaining;        // ropes left in the pack; spent one-per-grab, can't rappel at 0
+    private bool falling;              // in an untethered free fall right now
+    private float fallApexY;           // highest point reached during the current fall (measures the drop)
     private PlayerHealth health;
     private float groundAngle;         // signed slope angle of the ground under us: 0 = flat, +45 uphill-right, -45 uphill-left
 
@@ -59,6 +71,16 @@ public class PlayerMovement : MonoBehaviour
     // Used by WindZone to scale gust force and here to scale mountain-impact damage.
     public float CurrentRopeLength => ropedAnchor != null ? Mathf.Max(0f, ropedAnchor.RopeOrigin.y - rb.position.y) : 0f;
     public bool IsOnRope => ropedAnchor != null;
+
+    // Ropes left in the pack; the HUD subscribes to RopesChanged to update the rope icons.
+    public int RopesRemaining => ropesRemaining;
+    public event System.Action<int> RopesChanged;
+
+    void Awake()
+    {
+        // Set before any other component's Start runs so the HUD reads the real count.
+        ropesRemaining = startingRopes;
+    }
 
     void Start()
     {
@@ -102,31 +124,14 @@ public class PlayerMovement : MonoBehaviour
         // Hold left mouse to "grab" the ground and scrub off speed until stopped.
         isGripping = Input.GetMouseButton(0);
 
-        // Double left-click: a little climb hop up-and-to-the-left (~half a meter).
-        if (Input.GetMouseButtonDown(0))
-        {
-            if (Time.time - lastClickTime <= doubleClickTime && isGrounded)
-            {
-                climbHopRequested = true;
-                lastClickTime = -1f; // consume, so a triple-click doesn't chain hops
-            }
-            else
-            {
-                lastClickTime = Time.time;
-            }
-        }
-
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
-        {
-            jumpRequested = true;
-        }
-
         // Hold right mouse near an edge to grab a rope and rappel down; release to fall.
         if (Input.GetMouseButton(1))
         {
-            if (ropedAnchor == null && nearbyAnchor != null)
+            if (ropedAnchor == null && nearbyAnchor != null && ropesRemaining > 0)
             {
                 ropedAnchor = nearbyAnchor; // grab the rope
+                ropesRemaining--;           // spend one from the pack
+                RopesChanged?.Invoke(ropesRemaining);
             }
         }
         else
@@ -134,24 +139,42 @@ public class PlayerMovement : MonoBehaviour
             ropedAnchor = null; // released — let go of the rope and fall
         }
 
-        // Face the direction of travel, so the player looks downhill while descending.
-        if (spriteRenderer != null && Mathf.Abs(rb.linearVelocity.x) > 0.05f)
+        // Facing: while rappelling, hold a fixed flip so the feet stay pointed at the rock
+        // wall (the sway spring would otherwise flicker the sprite left/right). On the ground,
+        // face the direction of travel so the player looks downhill while descending.
+        if (spriteRenderer != null)
         {
-            spriteRenderer.flipX = rb.linearVelocity.x < 0f;
+            if (ropedAnchor != null)
+            {
+                spriteRenderer.flipX = ropeSpriteFlipX;
+            }
+            else if (isUsingAxe)
+            {
+                // Face downhill (the way the slide is going) but flipped, so the axe is
+                // shown biting into the slope rather than swinging away from it.
+                bool slidingLeft = rb.linearVelocity.x < 0f;
+                spriteRenderer.flipX = axeSpriteFlipX ? !slidingLeft : slidingLeft;
+            }
+            else if (Mathf.Abs(rb.linearVelocity.x) > 0.05f)
+            {
+                spriteRenderer.flipX = rb.linearVelocity.x < 0f;
+            }
         }
 
-        // Three grounded looks: walk when the player is steering under power, slope when
-        // they're coasting/sliding across the terrain with no input, idle when basically
-        // still. Roped descent uses none of these.
+        // Four looks: rope-descent when hanging on the rope, then three grounded looks — walk
+        // when steering under power, slope when coasting/sliding with no input, idle when still.
         if (animator != null)
         {
-            bool onGround = ropedAnchor == null && isGrounded;
+            bool onRope = ropedAnchor != null;
+            bool onGround = !onRope && isGrounded;
             bool moving = Mathf.Abs(rb.linearVelocity.x) > walkAnimSpeedThreshold;
             bool hasInput = Mathf.Abs(moveInput) > 0.01f;
 
             bool walking = onGround && moving && hasInput;
             bool sliding = onGround && moving && !hasInput;
 
+            animator.SetBool(IsOnRopeHash, onRope);
+            animator.SetBool(IsUsingAxeHash, isUsingAxe);
             animator.SetBool(IsWalkingHash, walking);
             animator.SetBool(IsSlidingHash, sliding);
         }
@@ -159,8 +182,11 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
+        isUsingAxe = false; // re-decided each physics step; stays off while roped/airborne/walking
+
         if (ropedAnchor != null)
         {
+            falling = false; // hanging on the rope is not a free fall
             DescendOnRope();
             return;
         }
@@ -170,6 +196,31 @@ public class PlayerMovement : MonoBehaviour
         isGrounded =
             (bodyCollider != null && bodyCollider.IsTouchingLayers(groundLayer)) ||
             (groundCheck != null && Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer));
+
+        // Fatal free fall: while airborne, remember the highest point of the fall; on touchdown,
+        // if the total drop was taller than fatalFallHeight the landing is unsurvivable.
+        if (isGrounded)
+        {
+            if (falling)
+            {
+                float dropped = fallApexY - rb.position.y;
+                falling = false;
+                if (dropped > fatalFallHeight && health != null)
+                {
+                    health.Kill();
+                    return;
+                }
+            }
+        }
+        else if (!falling)
+        {
+            falling = true;
+            fallApexY = rb.position.y;
+        }
+        else if (rb.position.y > fallApexY)
+        {
+            fallApexY = rb.position.y; // still rising (e.g. flung upward) — measure the drop from the true apex
+        }
 
         // Probe the surface directly under the player to read the slope angle: cast straight
         // down and measure how far the hit's normal tilts off vertical. Flat ground reads ~0,
@@ -187,20 +238,49 @@ public class PlayerMovement : MonoBehaviour
             Debug.Log("Ground angle: no surface below (airborne)");
         }
 
+        // Too steep to climb: on a slope steeper than maxClimbAngle, steering into the uphill
+        // side does nothing — gravity just slides you back down. (groundAngle's sign points
+        // uphill: + = uphill to the right, - = uphill to the left.)
+        float effectiveMove = moveInput;
+        if (Mathf.Abs(groundAngle) > maxClimbAngle &&
+            Mathf.Abs(moveInput) > 0.01f &&
+            Mathf.Sign(moveInput) == Mathf.Sign(groundAngle))
+        {
+            effectiveMove = 0f;
+        }
+
         if (isGripping && isGrounded)
         {
-            // Digging in: bleed the whole velocity toward zero fast, fighting the slope's
-            // pull each step so the player anchors and holds instead of creeping down.
-            Vector2 gripped = Vector2.MoveTowards(rb.linearVelocity, Vector2.zero, gripDeceleration * Time.fixedDeltaTime);
-            rb.linearVelocity = gripped;
+            // Left mouse while sliding (coasting with no steer) down a steep enough slope plants
+            // the ice axe: scrub the slide down to a crawl — an "almost" stop, not a dead halt —
+            // so the axe visibly bites in and arrests the descent.
+            float slopeSteepness = Mathf.Abs(groundAngle);
+            bool onSteepSlope = slopeSteepness >= axeMinSlopeAngle && slopeSteepness <= axeMaxSlopeAngle;
+            bool sliding = Mathf.Abs(rb.linearVelocity.x) > walkAnimSpeedThreshold && Mathf.Abs(moveInput) < 0.01f;
+            isUsingAxe = onSteepSlope && sliding;
+
+            if (isUsingAxe)
+            {
+                float slideSign = Mathf.Sign(rb.linearVelocity.x);
+                float target = slideSign * axeResidualSpeed;
+                float newSpeedX = Mathf.MoveTowards(rb.linearVelocity.x, target, axeArrestDeceleration * Time.fixedDeltaTime);
+                rb.linearVelocity = new Vector2(newSpeedX, rb.linearVelocity.y);
+            }
+            else
+            {
+                // Digging in on flat/gentle ground: bleed the whole velocity toward zero fast,
+                // fighting the slope's pull each step so the player anchors and holds.
+                Vector2 gripped = Vector2.MoveTowards(rb.linearVelocity, Vector2.zero, gripDeceleration * Time.fixedDeltaTime);
+                rb.linearVelocity = gripped;
+            }
             moveHoldTime = 0f; // let go and you'll have to break trail through the snow again
         }
-        else if (Mathf.Abs(moveInput) > 0.01f)
+        else if (Mathf.Abs(effectiveMove) > 0.01f)
         {
             // Break trail through deep snow: each fresh step (or reversal) starts as a slow
             // trudge and works up to full walking pace over startupTime, so getting moving
             // takes effort instead of snapping to speed.
-            float moveSign = Mathf.Sign(moveInput);
+            float moveSign = Mathf.Sign(effectiveMove);
             if (moveSign != lastMoveSign) moveHoldTime = 0f;
             lastMoveSign = moveSign;
             moveHoldTime = Mathf.Min(moveHoldTime + Time.fixedDeltaTime, startupTime);
@@ -228,21 +308,15 @@ public class PlayerMovement : MonoBehaviour
             moveHoldTime = 0f;
         }
 
-        if (jumpRequested)
+        // Too steep to climb: strip any uphill velocity so neither steering nor leftover momentum
+        // can carry the player up a slope past maxClimbAngle — gravity only lets them slide down.
+        if (isGrounded && Mathf.Abs(groundAngle) > maxClimbAngle)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-            jumpRequested = false;
-        }
-
-        if (climbHopRequested)
-        {
-            // Derive the upward speed needed to reach climbHopHeight from the actual gravity
-            // acting on this body: v = sqrt(2 * g * h). Keeps the hop ~half a meter regardless
-            // of gravityScale tuning.
-            float gravity = Mathf.Abs(Physics2D.gravity.y) * rb.gravityScale;
-            float hopUpSpeed = Mathf.Sqrt(2f * gravity * climbHopHeight);
-            rb.linearVelocity = new Vector2(-climbHopSideSpeed, hopUpSpeed);
-            climbHopRequested = false;
+            float uphillSign = Mathf.Sign(groundAngle); // + = uphill right, - = uphill left
+            if (Mathf.Sign(rb.linearVelocity.x) == uphillSign)
+            {
+                rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            }
         }
     }
 
