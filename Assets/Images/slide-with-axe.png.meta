@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 48b62ad3c9e0a2c46b588efee727ab2b
+guid: 9d5ea9ddeee119842bd6d5dd7dad90cd
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 556885762181827672
-    second: using-axe_0
+      213: 2208802911074909950
+    second: slide-with-axe_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -113,23 +113,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: using-axe_0
+      name: slide-with-axe_0
       rect:
         serializedVersion: 2
-        x: 152
-        y: 118
-        width: 404
-        height: 481
+        x: 32
+        y: 56
+        width: 444
+        height: 527
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 85c025376a47ab700800000000000000
-      internalID: 556885762181827672
+      spriteID: efef77d7b8e37ae10800000000000000
+      internalID: 2208802911074909950
       vertices: []
       indices: 
       edges: []
@@ -138,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 3fbb2ef1e9113b040bd58d3201b72243
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      using-axe_0: 556885762181827672
+      slide-with-axe_0: 2208802911074909950
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

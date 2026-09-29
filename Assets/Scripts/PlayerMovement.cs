@@ -33,13 +33,16 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float ropeDamagePerMeter = 2f; // extra mountain-impact damage per meter of rope paid out
     [SerializeField] private float minSwingSpeedForBonus = 1.5f; // sideways speed needed for a hit to count as a "swinging" hit
     [SerializeField] private int startingRopes = 3;         // ropes carried at the start; each rappel grab spends one
+    [SerializeField] private int maxRopes = 3;              // most ropes the pack can hold (matches the HUD icon count)
 
     [Header("Ice-axe arrest")]
-    [SerializeField] private float axeMinSlopeAngle = 45f;       // shallowest slope (deg) the axe will bite into
+    [SerializeField] private float axeSlideMinSlopeAngle = 20f;  // shallowest slope (deg) the axe engages on — plays the slide-with-axe anim below axeMinSlopeAngle
+    [SerializeField] private float axeMinSlopeAngle = 45f;       // at/above this the steeper using-axe anim plays instead
     [SerializeField] private float axeMaxSlopeAngle = 80f;       // steepest slope (deg) the axe still works on (near-vertical is too sheer)
     [SerializeField] private float axeArrestDeceleration = 30f;  // how hard planting the axe scrubs the slide off
     [SerializeField] private float axeResidualSpeed = 0.15f;     // slide left in the axe (units/sec) — an "almost" stop, not a dead one
-    [SerializeField] private bool axeSpriteFlipX = true;         // flip the axe-grab sprite so the axe bites into the slope
+    [SerializeField] private bool axeSpriteFlipX = true;         // flip the steep using-axe sprite so the axe bites into the slope
+    [SerializeField] private bool slideAxeSpriteFlipX = false;   // flip the gentler slide-with-axe sprite so the axe points into the mountain
 
     [Header("Animation")]
     [SerializeField] private float walkAnimSpeedThreshold = 0.05f; // horizontal speed above which the walk anim plays
@@ -53,10 +56,12 @@ public class PlayerMovement : MonoBehaviour
     private static readonly int IsSlidingHash = Animator.StringToHash("IsSliding");
     private static readonly int IsOnRopeHash = Animator.StringToHash("IsOnRope");
     private static readonly int IsUsingAxeHash = Animator.StringToHash("IsUsingAxe");
+    private static readonly int IsSlideAxeHash = Animator.StringToHash("IsSlideAxe");
     private float moveInput;
     private bool isGrounded;
     private bool isGripping;
-    private bool isUsingAxe;            // planting the ice axe into a steep slope this physics step
+    private bool isUsingAxe;            // planting the ice axe into a steep (45-80°) slope this physics step
+    private bool isSlideAxe;            // arresting a slide with the axe on a gentler (20-45°) slope this physics step
     private float moveHoldTime;        // how long we've been trudging in the current direction (drives the snow ramp)
     private float lastMoveSign;        // direction we were last steering; a flip restarts the trudge
     private EdgeAnchor nearbyAnchor;   // an edge we're overlapping and could grab
@@ -79,7 +84,16 @@ public class PlayerMovement : MonoBehaviour
     void Awake()
     {
         // Set before any other component's Start runs so the HUD reads the real count.
-        ropesRemaining = startingRopes;
+        ropesRemaining = Mathf.Min(startingRopes, maxRopes);
+    }
+
+    // Picked up a rope item: add one to the pack (up to capacity) and refresh the HUD.
+    public void AddRope()
+    {
+        if (ropesRemaining >= maxRopes) return;
+
+        ropesRemaining++;
+        RopesChanged?.Invoke(ropesRemaining);
     }
 
     void Start()
@@ -148,12 +162,14 @@ public class PlayerMovement : MonoBehaviour
             {
                 spriteRenderer.flipX = ropeSpriteFlipX;
             }
-            else if (isUsingAxe)
+            else if (isUsingAxe || isSlideAxe)
             {
                 // Face downhill (the way the slide is going) but flipped, so the axe is
-                // shown biting into the slope rather than swinging away from it.
+                // shown biting into the mountain rather than pointing away from it. Each clip
+                // is drawn facing its own way, so they have separate flip toggles.
                 bool slidingLeft = rb.linearVelocity.x < 0f;
-                spriteRenderer.flipX = axeSpriteFlipX ? !slidingLeft : slidingLeft;
+                bool flip = isUsingAxe ? axeSpriteFlipX : slideAxeSpriteFlipX;
+                spriteRenderer.flipX = flip ? !slidingLeft : slidingLeft;
             }
             else if (Mathf.Abs(rb.linearVelocity.x) > 0.05f)
             {
@@ -175,6 +191,7 @@ public class PlayerMovement : MonoBehaviour
 
             animator.SetBool(IsOnRopeHash, onRope);
             animator.SetBool(IsUsingAxeHash, isUsingAxe);
+            animator.SetBool(IsSlideAxeHash, isSlideAxe);
             animator.SetBool(IsWalkingHash, walking);
             animator.SetBool(IsSlidingHash, sliding);
         }
@@ -183,6 +200,7 @@ public class PlayerMovement : MonoBehaviour
     void FixedUpdate()
     {
         isUsingAxe = false; // re-decided each physics step; stays off while roped/airborne/walking
+        isSlideAxe = false;
 
         if (ropedAnchor != null)
         {
@@ -255,11 +273,13 @@ public class PlayerMovement : MonoBehaviour
             // the ice axe: scrub the slide down to a crawl — an "almost" stop, not a dead halt —
             // so the axe visibly bites in and arrests the descent.
             float slopeSteepness = Mathf.Abs(groundAngle);
-            bool onSteepSlope = slopeSteepness >= axeMinSlopeAngle && slopeSteepness <= axeMaxSlopeAngle;
             bool sliding = Mathf.Abs(rb.linearVelocity.x) > walkAnimSpeedThreshold && Mathf.Abs(moveInput) < 0.01f;
-            isUsingAxe = onSteepSlope && sliding;
+            bool inAxeRange = slopeSteepness >= axeSlideMinSlopeAngle && slopeSteepness <= axeMaxSlopeAngle;
+            bool axeArrest = sliding && inAxeRange;
+            isUsingAxe = axeArrest && slopeSteepness >= axeMinSlopeAngle; // steeper 45-80° look
+            isSlideAxe = axeArrest && slopeSteepness < axeMinSlopeAngle;  // gentler 20-45° look
 
-            if (isUsingAxe)
+            if (axeArrest)
             {
                 float slideSign = Mathf.Sign(rb.linearVelocity.x);
                 float target = slideSign * axeResidualSpeed;
