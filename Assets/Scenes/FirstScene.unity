@@ -4418,6 +4418,7 @@ MonoBehaviour:
   slideAxeSpriteFlipX: 0
   walkAnimSpeedThreshold: 0.05
   ropeSpriteFlipX: 1
+  recoverMinFallHeight: 1
 --- !u!114 &1799926714
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4435,6 +4436,9 @@ MonoBehaviour:
   healthFill: {fileID: 1917454868}
   impulseSource: {fileID: 1799926716}
   hurtShakeForce: 0.3
+  hurtSprite: {fileID: 0}
+  hurtColor: {r: 1, g: 0.3, b: 0.3, a: 1}
+  hurtFlashDuration: 0.3
 --- !u!70 &1799926715
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

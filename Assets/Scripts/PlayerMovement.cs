@@ -47,6 +47,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("Animation")]
     [SerializeField] private float walkAnimSpeedThreshold = 0.05f; // horizontal speed above which the walk anim plays
     [SerializeField] private bool ropeSpriteFlipX = true;      // flip the rope-descent sprite so the feet face the rock wall
+    [SerializeField] private float recoverMinFallHeight = 1f;  // a survived fall taller than this plays the one-shot get-up "recover" anim on landing
 
     private Rigidbody2D rb;
     private Collider2D bodyCollider;
@@ -57,6 +58,8 @@ public class PlayerMovement : MonoBehaviour
     private static readonly int IsOnRopeHash = Animator.StringToHash("IsOnRope");
     private static readonly int IsUsingAxeHash = Animator.StringToHash("IsUsingAxe");
     private static readonly int IsSlideAxeHash = Animator.StringToHash("IsSlideAxe");
+    private static readonly int IsFallingHash = Animator.StringToHash("IsFalling");
+    private static readonly int RecoverHash = Animator.StringToHash("Recover");
     private float moveInput;
     private bool isGrounded;
     private bool isGripping;
@@ -69,6 +72,7 @@ public class PlayerMovement : MonoBehaviour
     private int ropesRemaining;        // ropes left in the pack; spent one-per-grab, can't rappel at 0
     private bool falling;              // in an untethered free fall right now
     private float fallApexY;           // highest point reached during the current fall (measures the drop)
+    private bool pendingRecover;       // survived a real fall this step; fire the one-shot recover trigger next Update
     private PlayerHealth health;
     private float groundAngle;         // signed slope angle of the ground under us: 0 = flat, +45 uphill-right, -45 uphill-left
 
@@ -177,8 +181,9 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
-        // Four looks: rope-descent when hanging on the rope, then three grounded looks — walk
-        // when steering under power, slope when coasting/sliding with no input, idle when still.
+        // The looks: rope-descent when hanging on the rope, falling while free-falling with no
+        // ground, then the grounded looks — walk when steering under power, slope when
+        // coasting/sliding with no input, idle when still.
         if (animator != null)
         {
             bool onRope = ropedAnchor != null;
@@ -194,6 +199,16 @@ public class PlayerMovement : MonoBehaviour
             animator.SetBool(IsSlideAxeHash, isSlideAxe);
             animator.SetBool(IsWalkingHash, walking);
             animator.SetBool(IsSlidingHash, sliding);
+            animator.SetBool(IsFallingHash, falling); // untethered free fall with no ground under us
+
+            // One-shot: on the frame we touch down from a real fall, fire the get-up. The
+            // falling->recover transition consumes it (recover then plays once back to idle).
+            if (pendingRecover)
+            {
+                animator.SetTrigger(RecoverHash);
+                pendingRecover = false;
+            }
+
         }
     }
 
@@ -228,6 +243,9 @@ public class PlayerMovement : MonoBehaviour
                     health.Kill();
                     return;
                 }
+                // Survived a real fall: queue the one-shot get-up. Tiny drops (a lip in the
+                // terrain) stay under recoverMinFallHeight so we don't flicker the anim.
+                if (dropped >= recoverMinFallHeight) pendingRecover = true;
             }
         }
         else if (!falling)

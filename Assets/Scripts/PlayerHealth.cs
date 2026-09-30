@@ -28,6 +28,11 @@ public class PlayerHealth : MonoBehaviour
     private Color baseColor = Color.white;   // the sprite's untinted color, restored after each flash
     private Coroutine hurtFlashRoutine;
 
+    private Animator animator;               // on the sprite child; driven to the dead pose on death
+    private PlayerMovement movement;         // disabled on death so the body stops taking input
+    private Rigidbody2D rb;                   // frozen on death so the corpse stays put
+    private static readonly int IsDeadHash = Animator.StringToHash("IsDead");
+
     void Awake()
     {
         CurrentHealth = maxHealth;
@@ -35,6 +40,10 @@ public class PlayerHealth : MonoBehaviour
 
         if (hurtSprite == null) hurtSprite = GetComponentInChildren<SpriteRenderer>();
         if (hurtSprite != null) baseColor = hurtSprite.color;
+
+        animator = GetComponentInChildren<Animator>();
+        movement = GetComponent<PlayerMovement>();
+        rb = GetComponent<Rigidbody2D>();
     }
 
     public void TakeDamage(float amount)
@@ -77,7 +86,17 @@ public class PlayerHealth : MonoBehaviour
     {
         Debug.Log($"{name} died.");
         Died?.Invoke();
-        gameObject.SetActive(false);
+
+        // Hand off control instead of despawning: play the dead pose and stop the body, but leave
+        // the GameObject active so the player stays visible on the Game Over screen.
+        if (animator != null) animator.SetBool(IsDeadHash, true);
+        if (movement != null) movement.enabled = false;   // no more input/rope/slide handling
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+            rb.simulated = false;                          // freeze in place — the corpse won't slide or fall further
+        }
     }
 
     // Snap the sprite to hurtColor, then ease it back to its normal color over hurtFlashDuration.
