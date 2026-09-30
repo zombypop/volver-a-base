@@ -1,9 +1,16 @@
 using UnityEngine;
+using UnityEngine.UI;
+using Unity.Cinemachine;
 
 public class PlayerHealth : MonoBehaviour
 {
     [SerializeField] private float maxHealth = 100f;
     [SerializeField] private float invulnerabilityDuration = 0.5f; // ignore further hits right after one lands
+ 
+    [SerializeField] private Image healthFill;
+    [SerializeField] private CinemachineImpulseSource impulseSource;
+    [SerializeField] private float hurtShakeForce = 0.3f; // scales the impulse — small so getting hurt is a little jolt, not a quake
+
 
     public float MaxHealth => maxHealth;
     public float CurrentHealth { get; private set; }
@@ -16,6 +23,7 @@ public class PlayerHealth : MonoBehaviour
     void Awake()
     {
         CurrentHealth = maxHealth;
+        UpdateHealthBar();
     }
 
     public void TakeDamage(float amount)
@@ -24,6 +32,10 @@ public class PlayerHealth : MonoBehaviour
 
         CurrentHealth = Mathf.Max(0f, CurrentHealth - amount);
         invulnerableUntil = Time.time + invulnerabilityDuration;
+        UpdateHealthBar();
+
+        // A little sideways camera kick so a hit is felt, not just seen.
+        if (impulseSource != null) impulseSource.GenerateImpulse(Vector3.right * hurtShakeForce);
 
         Debug.Log($"{name} took {amount:F1} damage — health now {CurrentHealth:F1}/{maxHealth:F1}");
 
@@ -39,6 +51,7 @@ public class PlayerHealth : MonoBehaviour
         if (IsDead) return;
 
         CurrentHealth = 0f;
+        UpdateHealthBar();
         Die();
     }
 
@@ -47,5 +60,12 @@ public class PlayerHealth : MonoBehaviour
         Debug.Log($"{name} died.");
         Died?.Invoke();
         gameObject.SetActive(false);
+    }
+
+    private void UpdateHealthBar()
+    {
+        if (healthFill == null || maxHealth <= 0f) return;
+
+        healthFill.fillAmount = Mathf.Clamp01(CurrentHealth / maxHealth);
     }
 }
