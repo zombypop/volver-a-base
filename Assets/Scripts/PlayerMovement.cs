@@ -43,6 +43,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float axeResidualSpeed = 0.15f;     // slide left in the axe (units/sec) — an "almost" stop, not a dead one
     [SerializeField] private bool axeSpriteFlipX = true;         // flip the steep using-axe sprite so the axe bites into the slope
     [SerializeField] private bool slideAxeSpriteFlipX = false;   // flip the gentler slide-with-axe sprite so the axe points into the mountain
+    [SerializeField] private bool stopAxeSpriteFlipX = false;    // flip the flat/gentle-ground stop-with-axe sprite
     [SerializeField] private int startingAxes = 3;               // axes carried at the start; the one in use wears down as it arrests
     [SerializeField] private int maxAxes = 3;                    // most axes the pack can hold (matches the HUD icon count)
     [SerializeField] private float axeLifeSeconds = 3f;          // seconds of continuous arresting a fresh axe survives before it breaks
@@ -61,6 +62,7 @@ public class PlayerMovement : MonoBehaviour
     private static readonly int IsOnRopeHash = Animator.StringToHash("IsOnRope");
     private static readonly int IsUsingAxeHash = Animator.StringToHash("IsUsingAxe");
     private static readonly int IsSlideAxeHash = Animator.StringToHash("IsSlideAxe");
+    private static readonly int IsStopAxeHash = Animator.StringToHash("IsStopAxe");
     private static readonly int IsFallingHash = Animator.StringToHash("IsFalling");
     private static readonly int RecoverHash = Animator.StringToHash("Recover");
     private float moveInput;
@@ -68,6 +70,7 @@ public class PlayerMovement : MonoBehaviour
     private bool isGripping;
     private bool isUsingAxe;            // planting the ice axe into a steep (45-80°) slope this physics step
     private bool isSlideAxe;            // arresting a slide with the axe on a gentler (20-45°) slope this physics step
+    private bool isStopAxe;            // gripping with the axe on flat/gentle ground (0 to axeSlideMinSlopeAngle) this physics step
     private float moveHoldTime;        // how long we've been trudging in the current direction (drives the snow ramp)
     private float lastMoveSign;        // direction we were last steering; a flip restarts the trudge
     private EdgeAnchor nearbyAnchor;   // an edge we're overlapping and could grab
@@ -189,13 +192,13 @@ public class PlayerMovement : MonoBehaviour
             {
                 spriteRenderer.flipX = ropeSpriteFlipX;
             }
-            else if (isUsingAxe || isSlideAxe)
+            else if (isUsingAxe || isSlideAxe || isStopAxe)
             {
                 // Face downhill (the way the slide is going) but flipped, so the axe is
                 // shown biting into the mountain rather than pointing away from it. Each clip
                 // is drawn facing its own way, so they have separate flip toggles.
                 bool slidingLeft = rb.linearVelocity.x < 0f;
-                bool flip = isUsingAxe ? axeSpriteFlipX : slideAxeSpriteFlipX;
+                bool flip = isUsingAxe ? axeSpriteFlipX : (isSlideAxe ? slideAxeSpriteFlipX : stopAxeSpriteFlipX);
                 spriteRenderer.flipX = flip ? !slidingLeft : slidingLeft;
             }
             else if (Mathf.Abs(rb.linearVelocity.x) > 0.05f)
@@ -220,6 +223,7 @@ public class PlayerMovement : MonoBehaviour
             animator.SetBool(IsOnRopeHash, onRope);
             animator.SetBool(IsUsingAxeHash, isUsingAxe);
             animator.SetBool(IsSlideAxeHash, isSlideAxe);
+            animator.SetBool(IsStopAxeHash, isStopAxe);
             animator.SetBool(IsWalkingHash, walking);
             animator.SetBool(IsSlidingHash, sliding);
             animator.SetBool(IsFallingHash, falling); // untethered free fall with no ground under us
@@ -239,6 +243,7 @@ public class PlayerMovement : MonoBehaviour
     {
         isUsingAxe = false; // re-decided each physics step; stays off while roped/airborne/walking
         isSlideAxe = false;
+        isStopAxe = false;
 
         if (ropedAnchor != null)
         {
@@ -320,6 +325,9 @@ public class PlayerMovement : MonoBehaviour
             bool axeArrest = sliding && inAxeRange && hasAxe; // no axe left = no arrest
             isUsingAxe = axeArrest && slopeSteepness >= axeMinSlopeAngle; // steeper 45-80° look
             isSlideAxe = axeArrest && slopeSteepness < axeMinSlopeAngle;  // gentler 20-45° look
+            // Flat/gentle ground below the slide-with-axe range: gripping here plants the axe to
+            // stop. Purely a look — the existing grip physics below are unchanged.
+            isStopAxe = slopeSteepness < axeSlideMinSlopeAngle;           // 0 to axeSlideMinSlopeAngle
 
             if (axeArrest)
             {
