@@ -19,11 +19,14 @@ public class InGameUIController : MonoBehaviour
     private Label healthLabel;
     private VisualElement gameOverScreen;
     private List<VisualElement> ropeIcons = new List<VisualElement>();
+    private List<VisualElement> axeIcons = new List<VisualElement>();
     private PlayerMovement movement;
     private PlayerHealth health;
     private float startY;
     private float lastShownAltitude = float.NaN;
     private int lastShownHealth = -1;
+    private int lastShownAxes = -1;
+    private float lastShownAxeLife = float.NaN;
 
     void OnEnable()
     {
@@ -39,18 +42,29 @@ public class InGameUIController : MonoBehaviour
         ropeIcons = ropeContainer != null ? ropeContainer.Children().ToList()
                                           : new List<VisualElement>();
 
+        // Ice-axe icons: one per axe in the pack; the current (rightmost) one fades as it wears.
+        VisualElement axeContainer = root.Q<VisualElement>("ice-axe-icons");
+        axeIcons = axeContainer != null ? axeContainer.Children().ToList()
+                                        : new List<VisualElement>();
+
         // Restart button reloads the current scene from scratch.
         Button restartButton = root.Q<Button>("RestartButton");
         if (restartButton != null) restartButton.clicked += RestartScene;
 
         lastShownAltitude = float.NaN;
         lastShownHealth = -1;
+        lastShownAxes = -1;
+        lastShownAxeLife = float.NaN;
 
         // Hidden until the player dies (also re-applied if the UI gets rebuilt mid-game).
         SetGameOverVisible(health != null && health.IsDead);
 
-        // Re-sync the icons to the live count in case the UI tree was rebuilt mid-game.
-        if (movement != null) UpdateRopeIcons(movement.RopesRemaining);
+        // Re-sync the icons to the live counts in case the UI tree was rebuilt mid-game.
+        if (movement != null)
+        {
+            UpdateRopeIcons(movement.RopesRemaining);
+            UpdateAxes();
+        }
     }
 
     void OnDestroy()
@@ -66,6 +80,20 @@ public class InGameUIController : MonoBehaviour
         {
             bool show = i < remaining;
             ropeIcons[i].style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+    }
+
+    // Show one icon per axe in the pack; the current axe (rightmost visible) fades with its
+    // remaining life, and broken axes disappear from the right — same convention as ropes.
+    private void UpdateAxeIcons(int remaining, float currentLife)
+    {
+        for (int i = 0; i < axeIcons.Count; i++)
+        {
+            bool show = i < remaining;
+            axeIcons[i].style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            // Only the current (rightmost visible) axe is being worn; the spares stay full.
+            float opacity = (show && i == remaining - 1) ? Mathf.Clamp01(currentLife) : 1f;
+            axeIcons[i].style.opacity = opacity;
         }
     }
 
@@ -124,6 +152,25 @@ public class InGameUIController : MonoBehaviour
     {
         UpdateAltitude();
         UpdateHealth();
+        UpdateAxes();
+    }
+
+    // Axe life drains continuously while arresting, so poll it each frame (like health/altitude)
+    // and only restyle the icons when the count or the current axe's life actually changes.
+    private void UpdateAxes()
+    {
+        if (movement == null || axeIcons.Count == 0) return;
+
+        int remaining = movement.AxesRemaining;
+        float life = movement.CurrentAxeLife;
+
+        // Round the life so sub-1% wobble doesn't restyle every frame.
+        float roundedLife = Mathf.Round(life * 100f) / 100f;
+        if (remaining == lastShownAxes && roundedLife == lastShownAxeLife) return;
+        lastShownAxes = remaining;
+        lastShownAxeLife = roundedLife;
+
+        UpdateAxeIcons(remaining, life);
     }
 
     private void UpdateHealth()

@@ -43,6 +43,9 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float axeResidualSpeed = 0.15f;     // slide left in the axe (units/sec) — an "almost" stop, not a dead one
     [SerializeField] private bool axeSpriteFlipX = true;         // flip the steep using-axe sprite so the axe bites into the slope
     [SerializeField] private bool slideAxeSpriteFlipX = false;   // flip the gentler slide-with-axe sprite so the axe points into the mountain
+    [SerializeField] private int startingAxes = 3;               // axes carried at the start; the one in use wears down as it arrests
+    [SerializeField] private int maxAxes = 3;                    // most axes the pack can hold (matches the HUD icon count)
+    [SerializeField] private float axeLifeSeconds = 3f;          // seconds of continuous arresting a fresh axe survives before it breaks
 
     [Header("Animation")]
     [SerializeField] private float walkAnimSpeedThreshold = 0.05f; // horizontal speed above which the walk anim plays
@@ -70,6 +73,8 @@ public class PlayerMovement : MonoBehaviour
     private EdgeAnchor nearbyAnchor;   // an edge we're overlapping and could grab
     private EdgeAnchor ropedAnchor;    // the edge we're currently descending from (null = not on rope)
     private int ropesRemaining;        // ropes left in the pack; spent one-per-grab, can't rappel at 0
+    private int axesRemaining;         // axes left in the pack; the frontmost is the one in use, can't arrest at 0
+    private float currentAxeLife;      // normalized 0..1 life of the current (frontmost) axe; drains while arresting, 0 = broken
     private bool falling;              // in an untethered free fall right now
     private float fallApexY;           // highest point reached during the current fall (measures the drop)
     private bool pendingRecover;       // survived a real fall this step; fire the one-shot recover trigger next Update
@@ -85,10 +90,17 @@ public class PlayerMovement : MonoBehaviour
     public int RopesRemaining => ropesRemaining;
     public event System.Action<int> RopesChanged;
 
+    // Axe stock and the current axe's remaining life (0..1). Axe life changes continuously
+    // while arresting, so the HUD polls these each frame rather than using a change event.
+    public int AxesRemaining => axesRemaining;
+    public float CurrentAxeLife => currentAxeLife;
+
     void Awake()
     {
-        // Set before any other component's Start runs so the HUD reads the real count.
+        // Set before any other component's Start runs so the HUD reads the real counts.
         ropesRemaining = Mathf.Min(startingRopes, maxRopes);
+        axesRemaining = Mathf.Min(startingAxes, maxAxes);
+        currentAxeLife = axesRemaining > 0 ? 1f : 0f;
     }
 
     // Picked up a rope item: add one to the pack (up to capacity) and refresh the HUD.
@@ -98,6 +110,17 @@ public class PlayerMovement : MonoBehaviour
 
         ropesRemaining++;
         RopesChanged?.Invoke(ropesRemaining);
+    }
+
+    // Picked up an axe item: add a fresh axe to the pack (up to capacity). If the pack was
+    // empty, the new axe becomes the current one at full life so it's usable immediately.
+    // The HUD polls AxesRemaining/CurrentAxeLife, so there's no event to fire here.
+    public void AddAxe()
+    {
+        if (axesRemaining >= maxAxes) return;
+
+        if (axesRemaining == 0) currentAxeLife = 1f;
+        axesRemaining++;
     }
 
     void Start()
@@ -293,16 +316,31 @@ public class PlayerMovement : MonoBehaviour
             float slopeSteepness = Mathf.Abs(groundAngle);
             bool sliding = Mathf.Abs(rb.linearVelocity.x) > walkAnimSpeedThreshold && Mathf.Abs(moveInput) < 0.01f;
             bool inAxeRange = slopeSteepness >= axeSlideMinSlopeAngle && slopeSteepness <= axeMaxSlopeAngle;
-            bool axeArrest = sliding && inAxeRange;
+            bool hasAxe = axesRemaining > 0;
+            bool axeArrest = sliding && inAxeRange && hasAxe; // no axe left = no arrest
             isUsingAxe = axeArrest && slopeSteepness >= axeMinSlopeAngle; // steeper 45-80° look
             isSlideAxe = axeArrest && slopeSteepness < axeMinSlopeAngle;  // gentler 20-45° look
 
             if (axeArrest)
             {
+                // Continuous wear: the biting axe loses life every step. When it's spent the
+                // axe breaks, the next spare (fresh) takes over, and at 0 axes arrest is done.
+                currentAxeLife -= Time.fixedDeltaTime / Mathf.Max(0.01f, axeLifeSeconds);
+                if (currentAxeLife <= 0f)
+                {
+                    axesRemaining = Mathf.Max(0, axesRemaining - 1);
+                    currentAxeLife = axesRemaining > 0 ? 1f : 0f;
+                }
+
                 float slideSign = Mathf.Sign(rb.linearVelocity.x);
                 float target = slideSign * axeResidualSpeed;
                 float newSpeedX = Mathf.MoveTowards(rb.linearVelocity.x, target, axeArrestDeceleration * Time.fixedDeltaTime);
                 rb.linearVelocity = new Vector2(newSpeedX, rb.linearVelocity.y);
+            }
+            else if (sliding && inAxeRange)
+            {
+                // In axe range but out of axes — grip alone can't bite an icy steep slope, so
+                // let the slide run on (this is the stake of the axe wearing out).
             }
             else
             {
