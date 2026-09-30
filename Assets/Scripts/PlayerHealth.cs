@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using Unity.Cinemachine;
@@ -11,6 +12,11 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private CinemachineImpulseSource impulseSource;
     [SerializeField] private float hurtShakeForce = 0.3f; // scales the impulse — small so getting hurt is a little jolt, not a quake
 
+    [Header("Hurt flash")]
+    [SerializeField] private SpriteRenderer hurtSprite;       // sprite to tint on a hit; auto-found in children if empty
+    [SerializeField] private Color hurtColor = new Color(1f, 0.3f, 0.3f); // tint at the peak of the flash
+    [SerializeField] private float hurtFlashDuration = 0.3f;  // seconds for the tint to fade back to normal
+
 
     public float MaxHealth => maxHealth;
     public float CurrentHealth { get; private set; }
@@ -19,11 +25,16 @@ public class PlayerHealth : MonoBehaviour
     public event System.Action Died;
 
     private float invulnerableUntil = -1f;
+    private Color baseColor = Color.white;   // the sprite's untinted color, restored after each flash
+    private Coroutine hurtFlashRoutine;
 
     void Awake()
     {
         CurrentHealth = maxHealth;
         UpdateHealthBar();
+
+        if (hurtSprite == null) hurtSprite = GetComponentInChildren<SpriteRenderer>();
+        if (hurtSprite != null) baseColor = hurtSprite.color;
     }
 
     public void TakeDamage(float amount)
@@ -36,6 +47,13 @@ public class PlayerHealth : MonoBehaviour
 
         // A little sideways camera kick so a hit is felt, not just seen.
         if (impulseSource != null) impulseSource.GenerateImpulse(Vector3.right * hurtShakeForce);
+
+        // Flash the sprite red so the hit reads visually too.
+        if (hurtSprite != null)
+        {
+            if (hurtFlashRoutine != null) StopCoroutine(hurtFlashRoutine);
+            hurtFlashRoutine = StartCoroutine(HurtFlash());
+        }
 
         Debug.Log($"{name} took {amount:F1} damage — health now {CurrentHealth:F1}/{maxHealth:F1}");
 
@@ -60,6 +78,21 @@ public class PlayerHealth : MonoBehaviour
         Debug.Log($"{name} died.");
         Died?.Invoke();
         gameObject.SetActive(false);
+    }
+
+    // Snap the sprite to hurtColor, then ease it back to its normal color over hurtFlashDuration.
+    private IEnumerator HurtFlash()
+    {
+        float elapsed = 0f;
+        while (elapsed < hurtFlashDuration)
+        {
+            hurtSprite.color = Color.Lerp(hurtColor, baseColor, elapsed / hurtFlashDuration);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        hurtSprite.color = baseColor;
+        hurtFlashRoutine = null;
     }
 
     private void UpdateHealthBar()
