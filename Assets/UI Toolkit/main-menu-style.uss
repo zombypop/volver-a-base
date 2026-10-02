@@ -1,0 +1,21 @@
+:root {
+}
+
+#Title {
+    width: 100%;
+    white-space: normal;          /* wrap onto multiple lines instead of running off-screen */
+    -unity-text-align: middle-center;
+}
+
+.buttons {
+    font-size: 32px;
+    color: rgb(233, 245, 157);
+    background-color: rgba(0, 0, 0, 0);
+    -unity-font-style: bold;
+    -unity-text-align: upper-center;
+}
+
+.buttons:hover {
+    font-size: 40px;
+    transition-duration: 0.2s;
+}
