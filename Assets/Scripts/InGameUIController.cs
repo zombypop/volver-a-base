@@ -15,9 +15,15 @@ public class InGameUIController : MonoBehaviour
 
     [SerializeField] private CinemachineCamera followCamera;    // auto-found if left empty; stops following the player on game over
 
+    [Header("HUD icons")]
+    [SerializeField] private Sprite ropeIconSprite;             // optional; falls back to the sprite on the UXML placeholder icons
+    [SerializeField] private Sprite axeIconSprite;              // optional; falls back to the sprite on the UXML placeholder icons
+
     private Label altitudeLabel;
     private Label healthLabel;
     private VisualElement gameOverScreen;
+    private VisualElement ropeContainer;
+    private VisualElement axeContainer;
     private List<VisualElement> ropeIcons = new List<VisualElement>();
     private List<VisualElement> axeIcons = new List<VisualElement>();
     private PlayerMovement movement;
@@ -36,16 +42,19 @@ public class InGameUIController : MonoBehaviour
         healthLabel = root.Q<Label>("Health");
         gameOverScreen = root.Q<VisualElement>("GameOverScreen");
 
-        // The rope icons are the images inside the "rope-icons" container; we hide them
-        // from the right as ropes are spent.
-        VisualElement ropeContainer = root.Q<VisualElement>("rope-icons");
-        ropeIcons = ropeContainer != null ? ropeContainer.Children().ToList()
-                                          : new List<VisualElement>();
+        // Rope / axe icons are generated at runtime, one per item, so the pack is uncapped. Grab
+        // the sprite from the UXML placeholders (unless one is assigned in the Inspector), then
+        // clear the containers — we rebuild their contents to match the live counts.
+        ropeContainer = root.Q<VisualElement>("rope-icons");
+        axeContainer = root.Q<VisualElement>("ice-axe-icons");
 
-        // Ice-axe icons: one per axe in the pack; the current (rightmost) one fades as it wears.
-        VisualElement axeContainer = root.Q<VisualElement>("ice-axe-icons");
-        axeIcons = axeContainer != null ? axeContainer.Children().ToList()
-                                        : new List<VisualElement>();
+        if (ropeIconSprite == null) ropeIconSprite = GrabSprite(ropeContainer);
+        if (axeIconSprite == null) axeIconSprite = GrabSprite(axeContainer);
+
+        ropeContainer?.Clear();
+        axeContainer?.Clear();
+        ropeIcons.Clear();
+        axeIcons.Clear();
 
         // Restart button reloads the current scene from scratch.
         Button restartButton = root.Q<Button>("RestartButton");
@@ -73,26 +82,48 @@ public class InGameUIController : MonoBehaviour
         if (movement != null) movement.RopesChanged -= UpdateRopeIcons;
     }
 
-    // Show one icon per rope still in the pack; spent ropes disappear from the right.
-    private void UpdateRopeIcons(int remaining)
+    // Grab the sprite off the first Image placeholder in a container, so generated icons reuse
+    // whatever art the UXML wired up. Returns null if there's no placeholder to copy from.
+    private static Sprite GrabSprite(VisualElement container)
     {
-        for (int i = 0; i < ropeIcons.Count; i++)
+        Image img = container?.Children().OfType<Image>().FirstOrDefault();
+        return img != null ? img.sprite : null;
+    }
+
+    // Grow or shrink a container's icon list so it holds exactly `count` images.
+    private static void EnsureIconCount(VisualElement container, List<VisualElement> icons, Sprite sprite, int count)
+    {
+        if (container == null) return;
+        count = Mathf.Max(0, count);
+
+        while (icons.Count < count)
         {
-            bool show = i < remaining;
-            ropeIcons[i].style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            Image img = new Image { sprite = sprite };
+            container.Add(img);
+            icons.Add(img);
+        }
+        while (icons.Count > count)
+        {
+            int last = icons.Count - 1;
+            container.Remove(icons[last]);
+            icons.RemoveAt(last);
         }
     }
 
-    // Show one icon per axe in the pack; the current axe (rightmost visible) fades with its
-    // remaining life, and broken axes disappear from the right — same convention as ropes.
+    // One icon per rope still in the pack (uncapped) — spent ropes drop off the right.
+    private void UpdateRopeIcons(int remaining)
+    {
+        EnsureIconCount(ropeContainer, ropeIcons, ropeIconSprite, remaining);
+    }
+
+    // One icon per axe in the pack (uncapped); the current axe (rightmost) fades with its
+    // remaining life while the spares stay full.
     private void UpdateAxeIcons(int remaining, float currentLife)
     {
+        EnsureIconCount(axeContainer, axeIcons, axeIconSprite, remaining);
         for (int i = 0; i < axeIcons.Count; i++)
         {
-            bool show = i < remaining;
-            axeIcons[i].style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
-            // Only the current (rightmost visible) axe is being worn; the spares stay full.
-            float opacity = (show && i == remaining - 1) ? Mathf.Clamp01(currentLife) : 1f;
+            float opacity = (i == axeIcons.Count - 1) ? Mathf.Clamp01(currentLife) : 1f;
             axeIcons[i].style.opacity = opacity;
         }
     }
