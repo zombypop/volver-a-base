@@ -1,10 +1,19 @@
 fileFormatVersion: 2
-guid: ff09c17f4472cf348a8c0975c407b2ea
+guid: b6cc45b8e354c8944bf4a0562c8086e2
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 221435206442895824
-    second: MidMountains_0
+      213: 1240258089640062766
+    second: rock-3_0
+  - first:
+      213: -548028199269293710
+    second: rock-3_1
+  - first:
+      213: -3846086201821978342
+    second: rock-3_2
+  - first:
+      213: -7809737436988363222
+    second: rock-3_3
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +46,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -46,7 +55,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -113,13 +122,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: MidMountains_0
+      name: rock-3_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 1920
-        height: 1733
+        x: 15
+        y: 150
+        width: 71
+        height: 93
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +137,74 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 0d94bc4a522b21300800000000000000
-      internalID: 221435206442895824
+      spriteID: e2fecce4928463110800000000000000
+      internalID: 1240258089640062766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: rock-3_1
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 158
+        width: 110
+        height: 75
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27128af91430568f0800000000000000
+      internalID: -548028199269293710
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: rock-3_2
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 10
+        width: 107
+        height: 102
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a11aed41af4ff9ac0800000000000000
+      internalID: -3846086201821978342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: rock-3_3
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 50
+        width: 122
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2e2d37cd2d3e9390800000000000000
+      internalID: -7809737436988363222
       vertices: []
       indices: 
       edges: []
@@ -138,7 +213,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +223,10 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      MidMountains_0: 221435206442895824
+      rock-3_0: 1240258089640062766
+      rock-3_1: -548028199269293710
+      rock-3_2: -3846086201821978342
+      rock-3_3: -7809737436988363222
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

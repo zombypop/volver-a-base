@@ -105,3 +105,12 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Krita backup / autosave / temp image files
+*.kra~
+*-autosave.kra
+*-autosave.kra.meta
+*.png~
+
+# Unity recovered-scene dumps
+/[Aa]ssets/_Recovery/
