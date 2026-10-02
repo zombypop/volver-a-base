@@ -32,8 +32,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float ropeWidth = 0.05f;       // thickness of the rope line; tweakable live in Play mode
     [SerializeField] private float ropeDamagePerMeter = 2f; // extra mountain-impact damage per meter of rope paid out
     [SerializeField] private float minSwingSpeedForBonus = 1.5f; // sideways speed needed for a hit to count as a "swinging" hit
-    [SerializeField] private int startingRopes = 3;         // ropes carried at the start; each rappel grab spends one
-    [SerializeField] private int maxRopes = 3;              // most ropes the pack can hold (matches the HUD icon count)
+    [SerializeField] private int startingRopes = 3;         // ropes carried at the start; each rappel grab spends one (no carry cap)
 
     [Header("Ice-axe arrest")]
     [SerializeField] private float axeSlideMinSlopeAngle = 20f;  // shallowest slope (deg) the axe engages on — plays the slide-with-axe anim below axeMinSlopeAngle
@@ -44,8 +43,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private bool axeSpriteFlipX = true;         // flip the steep using-axe sprite so the axe bites into the slope
     [SerializeField] private bool slideAxeSpriteFlipX = false;   // flip the gentler slide-with-axe sprite so the axe points into the mountain
     [SerializeField] private bool stopAxeSpriteFlipX = false;    // flip the flat/gentle-ground stop-with-axe sprite
-    [SerializeField] private int startingAxes = 3;               // axes carried at the start; the one in use wears down as it arrests
-    [SerializeField] private int maxAxes = 3;                    // most axes the pack can hold (matches the HUD icon count)
+    [SerializeField] private int startingAxes = 3;               // axes carried at the start; the one in use wears down as it arrests (no carry cap)
     [SerializeField] private float axeLifeSeconds = 3f;          // seconds of continuous arresting a fresh axe survives before it breaks
 
     [Header("Animation")]
@@ -99,30 +97,31 @@ public class PlayerMovement : MonoBehaviour
     public int AxesRemaining => axesRemaining;
     public float CurrentAxeLife => currentAxeLife;
 
+    // Which way the player is currently facing (held through a stop). The camera reads this to
+    // lead ahead in the direction of travel. +1 = facing right, -1 = facing left.
+    public bool FacingLeft => facingLeft;
+    public float FacingSign => facingLeft ? -1f : 1f;
+
     void Awake()
     {
         // Set before any other component's Start runs so the HUD reads the real counts.
-        ropesRemaining = Mathf.Min(startingRopes, maxRopes);
-        axesRemaining = Mathf.Min(startingAxes, maxAxes);
+        ropesRemaining = Mathf.Max(0, startingRopes);
+        axesRemaining = Mathf.Max(0, startingAxes);
         currentAxeLife = axesRemaining > 0 ? 1f : 0f;
     }
 
-    // Picked up a rope item: add one to the pack (up to capacity) and refresh the HUD.
+    // Picked up a rope item: add one to the pack (no cap) and refresh the HUD.
     public void AddRope()
     {
-        if (ropesRemaining >= maxRopes) return;
-
         ropesRemaining++;
         RopesChanged?.Invoke(ropesRemaining);
     }
 
-    // Picked up an axe item: add a fresh axe to the pack (up to capacity). If the pack was
-    // empty, the new axe becomes the current one at full life so it's usable immediately.
+    // Picked up an axe item: add a fresh axe to the pack (no cap). If the pack was empty, the new
+    // axe becomes the current one at full life so it's usable immediately.
     // The HUD polls AxesRemaining/CurrentAxeLife, so there's no event to fire here.
     public void AddAxe()
     {
-        if (axesRemaining >= maxAxes) return;
-
         if (axesRemaining == 0) currentAxeLife = 1f;
         axesRemaining++;
     }
@@ -172,11 +171,14 @@ public class PlayerMovement : MonoBehaviour
         // Hold right mouse near an edge to grab a rope and rappel down; release to fall.
         if (Input.GetMouseButton(1))
         {
-            if (ropedAnchor == null && nearbyAnchor != null && ropesRemaining > 0)
+            if (ropedAnchor == null && nearbyAnchor != null && (ropesRemaining > 0 || GameManager.HasUnlimitedSupplies))
             {
                 ropedAnchor = nearbyAnchor; // grab the rope
-                ropesRemaining--;           // spend one from the pack
-                RopesChanged?.Invoke(ropesRemaining);
+                if (!GameManager.HasUnlimitedSupplies)
+                {
+                    ropesRemaining--;           // spend one from the pack
+                    RopesChanged?.Invoke(ropesRemaining);
+                }
             }
         }
         else
@@ -327,7 +329,7 @@ public class PlayerMovement : MonoBehaviour
             float slopeSteepness = Mathf.Abs(groundAngle);
             bool sliding = Mathf.Abs(rb.linearVelocity.x) > walkAnimSpeedThreshold && Mathf.Abs(moveInput) < 0.01f;
             bool inAxeRange = slopeSteepness >= axeSlideMinSlopeAngle && slopeSteepness <= axeMaxSlopeAngle;
-            bool hasAxe = axesRemaining > 0;
+            bool hasAxe = axesRemaining > 0 || GameManager.HasUnlimitedSupplies;
             bool axeArrest = sliding && inAxeRange && hasAxe; // no axe left = no arrest
             isUsingAxe = axeArrest && slopeSteepness >= axeMinSlopeAngle; // steeper 45-80° look
             isSlideAxe = axeArrest && slopeSteepness < axeMinSlopeAngle;  // gentler 20-45° look
@@ -339,11 +341,15 @@ public class PlayerMovement : MonoBehaviour
             {
                 // Continuous wear: the biting axe loses life every step. When it's spent the
                 // axe breaks, the next spare (fresh) takes over, and at 0 axes arrest is done.
-                currentAxeLife -= Time.fixedDeltaTime / Mathf.Max(0.01f, axeLifeSeconds);
-                if (currentAxeLife <= 0f)
+                // Skipped entirely in unlimited-supplies test mode so the axe never wears.
+                if (!GameManager.HasUnlimitedSupplies)
                 {
-                    axesRemaining = Mathf.Max(0, axesRemaining - 1);
-                    currentAxeLife = axesRemaining > 0 ? 1f : 0f;
+                    currentAxeLife -= Time.fixedDeltaTime / Mathf.Max(0.01f, axeLifeSeconds);
+                    if (currentAxeLife <= 0f)
+                    {
+                        axesRemaining = Mathf.Max(0, axesRemaining - 1);
+                        currentAxeLife = axesRemaining > 0 ? 1f : 0f;
+                    }
                 }
 
                 float slideSign = Mathf.Sign(rb.linearVelocity.x);

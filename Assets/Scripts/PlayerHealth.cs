@@ -49,6 +49,7 @@ public class PlayerHealth : MonoBehaviour
     public void TakeDamage(float amount)
     {
         if (IsDead || amount <= 0f || Time.time < invulnerableUntil) return;
+        if (GameManager.IsInvincible) return; // test mode: shrug off all damage
 
         CurrentHealth = Mathf.Max(0f, CurrentHealth - amount);
         invulnerableUntil = Time.time + invulnerabilityDuration;
@@ -76,6 +77,7 @@ public class PlayerHealth : MonoBehaviour
     public void Kill()
     {
         if (IsDead) return;
+        if (GameManager.IsInvincible) return; // test mode: survive even unsurvivable events
 
         CurrentHealth = 0f;
         UpdateHealthBar();
