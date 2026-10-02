@@ -73,6 +73,7 @@ public class PlayerMovement : MonoBehaviour
     private bool isStopAxe;            // gripping with the axe on flat/gentle ground (0 to axeSlideMinSlopeAngle) this physics step
     private float moveHoldTime;        // how long we've been trudging in the current direction (drives the snow ramp)
     private float lastMoveSign;        // direction we were last steering; a flip restarts the trudge
+    private bool facingLeft;           // last horizontal facing while actually moving; held when velocity bleeds to ~0 (e.g. stop-with-axe)
     private EdgeAnchor nearbyAnchor;   // an edge we're overlapping and could grab
     private EdgeAnchor ropedAnchor;    // the edge we're currently descending from (null = not on rope)
     private int ropesRemaining;        // ropes left in the pack; spent one-per-grab, can't rappel at 0
@@ -188,6 +189,9 @@ public class PlayerMovement : MonoBehaviour
         // face the direction of travel so the player looks downhill while descending.
         if (spriteRenderer != null)
         {
+            // Remember which way we're actually travelling so the facing survives a stop.
+            if (Mathf.Abs(rb.linearVelocity.x) > 0.05f) facingLeft = rb.linearVelocity.x < 0f;
+
             if (ropedAnchor != null)
             {
                 spriteRenderer.flipX = ropeSpriteFlipX;
@@ -197,7 +201,9 @@ public class PlayerMovement : MonoBehaviour
                 // Face downhill (the way the slide is going) but flipped, so the axe is
                 // shown biting into the mountain rather than pointing away from it. Each clip
                 // is drawn facing its own way, so they have separate flip toggles.
-                bool slidingLeft = rb.linearVelocity.x < 0f;
+                // On flat/gentle ground stop-with-axe bleeds speed to ~0, so the instantaneous
+                // velocity no longer says which way we came in — fall back to the held facing.
+                bool slidingLeft = Mathf.Abs(rb.linearVelocity.x) > 0.05f ? rb.linearVelocity.x < 0f : facingLeft;
                 bool flip = isUsingAxe ? axeSpriteFlipX : (isSlideAxe ? slideAxeSpriteFlipX : stopAxeSpriteFlipX);
                 spriteRenderer.flipX = flip ? !slidingLeft : slidingLeft;
             }
