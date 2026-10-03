@@ -52,6 +52,10 @@ public class SceneFader : MonoBehaviour
             return;
         }
 
+        // This panel sits on top (sortingOrder above), so make sure it never eats clicks meant for
+        // the UI beneath it — only the fade overlay should ever draw here.
+        root.pickingMode = PickingMode.Ignore;
+
         // A solid black rectangle covering the whole panel, transparent to start and to clicks.
         overlay = new VisualElement();
         overlay.style.position = Position.Absolute;
