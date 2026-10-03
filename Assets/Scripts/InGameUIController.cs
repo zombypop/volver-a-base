@@ -24,6 +24,8 @@ public class InGameUIController : MonoBehaviour
     private VisualElement gameOverScreen;
     private VisualElement ropeContainer;
     private VisualElement axeContainer;
+    private Texture ropeIconTexture;   // texture grabbed from the UXML placeholder (icons use a texture source, not a sprite)
+    private Texture axeIconTexture;
     private List<VisualElement> ropeIcons = new List<VisualElement>();
     private List<VisualElement> axeIcons = new List<VisualElement>();
     private PlayerMovement movement;
@@ -48,8 +50,14 @@ public class InGameUIController : MonoBehaviour
         ropeContainer = root.Q<VisualElement>("rope-icons");
         axeContainer = root.Q<VisualElement>("ice-axe-icons");
 
-        if (ropeIconSprite == null) ropeIconSprite = GrabSprite(ropeContainer);
-        if (axeIconSprite == null) axeIconSprite = GrabSprite(axeContainer);
+        // The UXML placeholders reference the PNG's texture (not a sprite), so capture both: a
+        // sprite if one was assigned/used, otherwise the texture. Generated icons reuse whichever.
+        Image ropeTemplate = ropeContainer?.Children().OfType<Image>().FirstOrDefault();
+        Image axeTemplate = axeContainer?.Children().OfType<Image>().FirstOrDefault();
+        if (ropeIconSprite == null) ropeIconSprite = ropeTemplate?.sprite;
+        if (axeIconSprite == null) axeIconSprite = axeTemplate?.sprite;
+        ropeIconTexture = ropeTemplate?.image;
+        axeIconTexture = axeTemplate?.image;
 
         ropeContainer?.Clear();
         axeContainer?.Clear();
@@ -82,23 +90,18 @@ public class InGameUIController : MonoBehaviour
         if (movement != null) movement.RopesChanged -= UpdateRopeIcons;
     }
 
-    // Grab the sprite off the first Image placeholder in a container, so generated icons reuse
-    // whatever art the UXML wired up. Returns null if there's no placeholder to copy from.
-    private static Sprite GrabSprite(VisualElement container)
-    {
-        Image img = container?.Children().OfType<Image>().FirstOrDefault();
-        return img != null ? img.sprite : null;
-    }
-
-    // Grow or shrink a container's icon list so it holds exactly `count` images.
-    private static void EnsureIconCount(VisualElement container, List<VisualElement> icons, Sprite sprite, int count)
+    // Grow or shrink a container's icon list so it holds exactly `count` images. Each new icon
+    // uses the sprite if there is one, otherwise the texture (what the UXML placeholders use).
+    private static void EnsureIconCount(VisualElement container, List<VisualElement> icons, Sprite sprite, Texture texture, int count)
     {
         if (container == null) return;
         count = Mathf.Max(0, count);
 
         while (icons.Count < count)
         {
-            Image img = new Image { sprite = sprite };
+            Image img = new Image();
+            if (sprite != null) img.sprite = sprite;
+            else if (texture != null) img.image = texture;
             container.Add(img);
             icons.Add(img);
         }
@@ -113,14 +116,14 @@ public class InGameUIController : MonoBehaviour
     // One icon per rope still in the pack (uncapped) — spent ropes drop off the right.
     private void UpdateRopeIcons(int remaining)
     {
-        EnsureIconCount(ropeContainer, ropeIcons, ropeIconSprite, remaining);
+        EnsureIconCount(ropeContainer, ropeIcons, ropeIconSprite, ropeIconTexture, remaining);
     }
 
     // One icon per axe in the pack (uncapped); the current axe (rightmost) fades with its
     // remaining life while the spares stay full.
     private void UpdateAxeIcons(int remaining, float currentLife)
     {
-        EnsureIconCount(axeContainer, axeIcons, axeIconSprite, remaining);
+        EnsureIconCount(axeContainer, axeIcons, axeIconSprite, axeIconTexture, remaining);
         for (int i = 0; i < axeIcons.Count; i++)
         {
             float opacity = (i == axeIcons.Count - 1) ? Mathf.Clamp01(currentLife) : 1f;
@@ -190,7 +193,7 @@ public class InGameUIController : MonoBehaviour
     // and only restyle the icons when the count or the current axe's life actually changes.
     private void UpdateAxes()
     {
-        if (movement == null || axeIcons.Count == 0) return;
+        if (movement == null) return;
 
         int remaining = movement.AxesRemaining;
         float life = movement.CurrentAxeLife;
