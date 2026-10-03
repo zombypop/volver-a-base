@@ -8977,7 +8977,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea97ebed948593047b7e7ffb5e5b26ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  unlimitedSupplies: 1
+  unlimitedSupplies: 0
   invincible: 1
 --- !u!4 &2044957092
 Transform:
