@@ -1,18 +1,20 @@
 :root {
+    background-image: url("project://database/Assets/Images/capsula-mini.png?fileID=2800000&guid=0ba88e82f5c542748b722343fe241dcd&type=3#capsula-mini");
 }
 
 #Title {
     width: 100%;
-    white-space: normal;          /* wrap onto multiple lines instead of running off-screen */
+    white-space: normal;
     -unity-text-align: middle-center;
 }
 
 .buttons {
     font-size: 32px;
     color: rgb(233, 245, 157);
-    background-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, 0.6);
     -unity-font-style: bold;
     -unity-text-align: upper-center;
+    width: 39%;
 }
 
 .buttons:hover {

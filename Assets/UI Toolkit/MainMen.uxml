@@ -1,12 +1,12 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Assets/UI%20Toolkit/main-menu-style.uss?fileID=7433441132597879392&amp;guid=9a3cc10577e278a469d6a4be3072567a&amp;type=3#main-menu-style"/>
-    <ui:VisualElement style="flex-grow: 1; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;); font-size: 140px; color: rgb(233, 245, 157); white-space: normal; text-overflow: clip; -unity-font-style: normal;">
-        <ui:VisualElement style="flex-grow: 1; width: 100%; justify-content: center; white-space: normal;">
-            <ui:Label text="Vuelta a cammpamento base" name="Title" style="-unity-text-align: middle-left;"/>
+    <ui:VisualElement name="VisualElement" style="flex-grow: 1; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;); font-size: 140px; color: rgb(233, 245, 157); white-space: normal; text-overflow: clip; -unity-font-style: normal; height: 30%;">
+        <ui:VisualElement style="flex-grow: 1; width: 100%; justify-content: center; white-space: normal; font-size: 90px;">
+            <ui:Label text="Vuelta a campamento base" name="Title" style="-unity-text-align: upper-left; white-space: normal; text-overflow: clip;"/>
         </ui:VisualElement>
     </ui:VisualElement>
-    <ui:VisualElement style="flex-grow: 1; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;);">
-        <ui:VisualElement name="VisualElement" style="flex-grow: 0; height: auto; width: 30%;">
+    <ui:VisualElement style="flex-grow: 1; -unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;); height: 70%; align-items: stretch;">
+        <ui:VisualElement name="VisualElement" style="flex-grow: 0; height: 268px; width: 534px; align-self: auto; justify-content: space-evenly; align-items: center; align-content: auto;">
             <ui:Button name="PlayButton" text="Play" class="buttons"/>
             <ui:Button name="QuitButton" text="Quit" class="buttons"/>
         </ui:VisualElement>
