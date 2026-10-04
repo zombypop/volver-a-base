@@ -22,6 +22,7 @@ public class InGameUIController : MonoBehaviour
     private Label altitudeLabel;
     private Label healthLabel;
     private VisualElement gameOverScreen;
+    private Button restartButton;
     private VisualElement ropeContainer;
     private VisualElement axeContainer;
     private Texture ropeIconTexture;   // texture grabbed from the UXML placeholder (icons use a texture source, not a sprite)
@@ -64,8 +65,9 @@ public class InGameUIController : MonoBehaviour
         ropeIcons.Clear();
         axeIcons.Clear();
 
-        // Restart button reloads the current scene from scratch.
-        Button restartButton = root.Q<Button>("RestartButton");
+        // Restart button reloads the current scene from scratch. Hidden until game over
+        // (SetGameOverVisible toggles it alongside the panel).
+        restartButton = root.Q<Button>("RestartButton");
         if (restartButton != null) restartButton.clicked += RestartScene;
 
         lastShownAltitude = float.NaN;
@@ -145,6 +147,10 @@ public class InGameUIController : MonoBehaviour
 
         gameOverScreen.SetEnabled(visible);
         gameOverScreen.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+
+        // "Try again?" only makes sense once the run is over.
+        if (restartButton != null)
+            restartButton.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
     }
 
     private void OnPlayerDied()

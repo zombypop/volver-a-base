@@ -20,6 +20,6 @@
         <ui:Label text="You died :(" name="GameOverText"/>
     </ui:VisualElement>
     <ui:VisualElement name="VisualElement" style="flex-grow: 0; flex-direction: row; justify-content: flex-end; flex-shrink: 0; height: 10%;">
-        <ui:Button text="Restart" name="RestartButton" style="-unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;);"/>
+        <ui:Button text="Try again?" name="RestartButton" style="-unity-font-definition: url(&quot;project://database/Assets/Fonts/Audiowide-Regular.ttf?fileID=12800000&amp;guid=3130f7cd6d3b29695bc08427335ba271&amp;type=3#Audiowide-Regular&quot;); display: none;"/>
     </ui:VisualElement>
 </ui:UXML>
